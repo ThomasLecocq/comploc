@@ -12,6 +12,8 @@ Shearer, P., E. Hauksson, and G. Lin (2005), *Southern California Hypocenter Rel
 
 Lin, G. and P. Shearer,  *Tests of relative earthquake location techniques using synthetic data* , J. Geophys. Res., 110, B04304, doi: 10.1029/2004JB003380, 2005.
 
+Lin, G., et P. Shearer (2006), *The COMPLOC Earthquake Location Package*, Seismological Research Letters, 77(4), 5.
+
 
 
 
