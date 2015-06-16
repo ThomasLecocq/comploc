@@ -1,0 +1,6 @@
+../../vzfillin << !
+vz.anza
+vz.anza.f
+1.732         !Vp/Vs ratio if Vs=0 in input
+0.5           !dz spacing for output
+!

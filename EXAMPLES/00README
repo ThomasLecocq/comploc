@@ -1,0 +1,11 @@
+./EXAMPLES
+
+This directory contains several example and test data sets that can be used to learn how to run the program package comploc.
+
+(1) directory /BED3 read in phase data in BED3 format
+(2) directory /HYPOINVERSE read in phase data in HYPOINVERSE format (NCEDC phase data format)
+(3) directory /STP_PHASE read in phase data in STP format (SCSN phase data format)
+
+See Readme files in each directory on how to re-run the data sets.
+
+Guoqing Lin, 07/2005

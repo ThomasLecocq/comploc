@@ -1,0 +1,25 @@
+#! /bin/csh
+
+../../comploc << !
+tt.socal.pg
+tt.socal.sg
+1
+Valle.bed3
+stlist.scsn
+5
+outstatic.L1.loc
+100
+5
+-999 999 -999 999
+0
+1
+10.0
+999999
+2
+5
+0
+1000  20
+20 5
+1
+15 0.67
+!

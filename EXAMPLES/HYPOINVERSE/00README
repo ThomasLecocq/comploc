@@ -1,0 +1,7 @@
+Coalinga region
+
+# number of events = 3841 (between 1983/05/01 and 1983/06/01)
+# number of picks = 86756
+
+xlim -120.6 -119.9
+ylim 35.9 36.5

@@ -1,0 +1,25 @@
+#! /bin/csh
+
+../../comploc << !
+tt.anza.pg
+tt.anza.sg
+2
+phaselist.stp
+stlist.scsn
+5
+outsingle.L1.loc
+100
+5
+-999 999 -999 999
+0
+1
+10.0
+999999
+2
+0
+0
+1000  60
+20 8
+1
+15 0.67
+!

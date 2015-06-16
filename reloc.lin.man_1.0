@@ -1,0 +1,711 @@
+********** USERS GUIDE:  COMPLOC EARTHQUAKE LOCATION PACKAGE **********
+
+This describes the programs included in the COMPLOC package, which
+are designed for local earthquake locations.  They have been tested
+on data from the Southern California Seismic Network (SCSN) and 
+Northern California Earthquake Data Center.
+
+
+Before beginning, it is necessary to have the following:
+
+
+(1) A one-dimensional velocity vs. depth model for the region.
+
+Here is the format:
+
+z or r     Vp        Vs    (DON'T INCLUDE THIS HEADER LINE!)
+
+ 0.0       4.0      2.31   (START WITH THIS LINE)
+ 6.0       6.2      3.58
+32.0       6.8      3.93
+32.0       7.8      4.50
+60.0       7.9      4.56
+
+The spacing is arbitrary in the file; a fixed column format is not required.
+The first column can be either depth or radius in km.  The next two columns
+are the P and S wave velocities in km/s.  A linear velocity gradient is assummed
+between model points.  In this case there is a velocity discontinuity at 32 km.
+For crustal models such as this one, a slight velocity gradient should be used
+for the upper mantle to assure that Pn and Sn arrivals will be obtained.
+
+Notice that one can also input a "layer cake" model such as the Hadley-Kanamori
+model for southern California:
+
+0.0   5.5  3.18
+5.5   5.5  3.18
+5.5   6.3  3.64
+16.0  6.3  3.64
+16.0  6.7  3.87
+32.0  6.7  3.87
+32.0  7.8  4.50
+40.0  7.83 4.52
+
+Notice, however, that a slight velocity gradient is put into the lowermost layer
+so that the program will generate rays for Pn and Sn. 
+
+
+(2) A list of station names, their locations and station corrections if available.
+
+Example:
+
+CI BAR  EHZ   32.68005  -116.67215     496.0    0.00    0.00
+CI BRG  EHZ   33.17139  -116.17470     205.0    0.00    0.00
+CI CAH  EHZ   33.49296  -116.72386    1313.0    0.00    0.00
+CI COY  EHZ   33.36296  -116.31114     218.0    0.00    0.00
+CI CPM  EHZ   34.15442  -116.19771     897.0    0.00    0.00
+
+The station location file format is:
+
+col  len  format    name        comment
+---  ---  ------    ----        -------
+ 1    2     a2      net         network id
+ 4    4     a4      stname      station name
+ 9    3     a3      comp        component (but not used in our location programs)
+13   10     f10.5   slat        station latitude
+23   12     f12.5   slon        station longitude
+35   10     f10.1   selev       station elevation (but not used in our programs)
+45   16     2f8.2   stterm(2)   prior station corrections at each station (1 for P, 2 for S)
+
+This is a fixed column format; you MUST put everything
+in the correct columns.  The program uses only the
+network id and station name to identify and locate
+stations.  This file should have no more than 5000
+lines.  It is not required that the file be in
+alphabetical order but this is recommended for your
+own convenience. (In UNIX, just enter "sort -name
+filename -print filename.srt" to obtain a sorted
+version.)
+
+
+(3) Phase pick data for the events to be located
+
+These can be in one of three possible formats:
+   (a) BED3, our own special binary format
+   (b) SCSN STP phase data
+   (c) NCEDC HYPOINVERSE phase data
+   
+For large data sets, we recommend that formats (b) and (c) 
+be converted to (a) using our conversion programs (see below) 
+because the BED3 format is much faster to read.  However, if 
+desired (b) and (c) can be used directly in the location program.
+
+
+The programs are as follows:
+
+VZFILLIN  resamples velocity model to finer depth intervals
+          (should be run before DEPTABLE)
+
+DEPTABLE  computes tables of travel time, ray angle, ray
+          parameter and vertical slowness at source as a 
+          function of source depth for both local and global
+	  seismic velocity models.  These output tables are 
+	  designed to be read with the GET_TTS subroutine.
+	  
+PHASE2BED3  converts from SCSN STP or Hypoinverse to
+            BED3 format for storing pick data
+	       
+COMPLOC   performs locations using grid search method
+          Implements "shrinking box" source-specific station
+          term (SSST) method (if desired).  Results are output
+	  into one of five possible formats.
+	  
+	  
+Recommended user sequence:
+
+(1) Create vz model and run VZFILLIN to resample to
+    1-km (or 0.5-km)  depth interval
+    
+(2) Run DEPTABLE to create tables necessary for COMPLOC
+
+(3) Use PHASE_TO_BED3 to convert phase pick data to BED3 format
+
+(4) Run COMPLOC to compute locations
+
+
+------------------------------------ VZFILLIN --------------------------------
+
+vzfillin.f is a utility program that reads (z, Vp, Vs) model files and resamples
+them at any desired finer depth interval.  This is done with linear interpolation.
+It also permits generating S velocities that are a specified fraction of the P
+velocities.
+
+Example:
+
+shearer@katmai 14> vzfillin
+ Enter input model file name
+vz.shlk1
+ Enter output file name
+vz.shlk1.1km
+ Enter Vp/Vs ratio if Vs=0 in input (e.g., 1.732)
+1.76
+ Enter output dz spacing (e.g. 1)
+1
+
+turns
+ 
+ 0.0     4.0    0.0   
+ 6.0     6.2    0.0  
+32.0     6.8    0.0  
+32.0     7.8    4.50 
+60.0     7.9    4.55
+
+into
+
+     0.000  4.0000  2.3094
+     1.000  4.3667  2.5211
+     2.000  4.7333  2.7328
+     3.000  5.1000  2.9445
+     4.000  5.4667  3.1562
+     5.000  5.8333  3.3679
+     6.000  6.2000  3.5796
+     7.000  6.2231  3.5929
+     8.000  6.2462  3.6062
+     9.000  6.2692  3.6195
+    10.000  6.2923  3.6329
+    11.000  6.3154  3.6462
+    12.000  6.3385  3.6595
+    13.000  6.3615  3.6728
+    14.000  6.3846  3.6862
+    15.000  6.4077  3.6995
+    etc.
+
+
+----------------------------------- DEPTABLE -------------------------------
+
+deptable.f is a f77 program that computes tables of travel time, ray angle,
+ray parameter, and vertical slowness at the source as a function of source 
+depth and source-receiver distance. It can be used for both local and global 
+seismic models because an Earth flattening transformation is applied to the 
+velocity model prior to the ray tracing.  The output tables are designed to 
+be read with the GET_TTS subroutine.
+
+An input velocity model is required in the following format:
+
+z or r     Vp        Vs
+
+ 0.0       4.0      2.31
+ 6.0       6.2      3.58
+32.0       6.8      3.93
+32.0       7.8      4.50
+60.0       7.9      4.56
+
+The first column can be either depth or radius in km.  The next two columns
+are the P and S wave velocities in km/s.  A linear velocity gradient is assummed
+between model points.  In this case there is a velocity discontinuity at 32 km.
+For crustal models such as this one, a slight velocity gradient should be used
+for the upper mantle to assure that Pn and Sn arrivals will be obtained.
+
+Notice that one can also input a "layer cake" model such as the Hadley-Kanamori
+model for southern California:
+
+
+0.0   5.5  3.18
+5.5   5.5  3.18
+5.5   6.3  3.64
+16.0  6.3  3.64
+16.0  6.7  3.87
+32.0  6.7  3.87
+32.0  7.8  4.50
+40.0  7.83 4.52
+
+Notice, however, that a slight velocity gradient is put into the lowermost layer
+so that the program will generate rays for Pn and Sn.
+
+IMPORTANT:  deptable will only give results for source depths that correspond
+to a specified depth in the input model.  These example input files are not finely 
+sampled in depth and thus are not suited for the example shown below in which
+results are output at 1 km depth intervals.  Use the VZFILLIN program to resample
+your input model to a finer depth sampling before running deptable.
+
+
+Here is an example of running the deptable program:
+
+---------------------------------------------------------------------------------
+shearer@katmai 9> deptable
+ Enter input velocity model
+vz.shlk1_1km 
+ First column of input:  1=depth, 2=radius
+1
+ finished reading model
+ Depth points in model=  126
+ ************************* Table of Model Interfaces **********************
+  Depth  Top Velocities  Bot Velocities    -----Flat Earth Slownesses-----
+              vp1  vs1        vp2  vs2       p1      p2        s1      s2
+   0.5    1  4.00 2.31    2  4.18 2.42   0.25000 0.23903   0.43301 0.41401
+   6.0   13  6.20 3.58   14  6.20 3.58   0.16114 0.16114   0.27910 0.27910
+  32.0   66  6.80 3.93   67  6.80 3.93   0.14632 0.14632   0.25343 0.25343
+  32.0   67  6.80 3.93   68  7.80 4.50   0.14632 0.12756   0.25343 0.22111
+  60.0  124  7.90 4.55  125  7.90 4.55   0.12539 0.12539   0.21771 0.21771
+  60.0  125  7.90 4.55  126  7.90 4.55   0.12539 0.12539   0.21771 0.21771
+ Enter maximum depth (9999 for none)
+ 9999 
+ Source depths:  (1) Range, (2) Exact
+ 1 
+ Enter source dep1,dep2,dep3 (km)(min,max,spacing)
+ 0 28 1
+ (1) P-waves  or  (2) S-waves
+ 1
+ pmin, pmax =   0.  0.25
+ Enter number of rays to compute
+ 5000
+ Enter min p at long range (.133 = no Pn, .238 = Sn)
+ .133
+ Completed ray tracing loop
+ (1) del in km, t in sec  or  (2) del in deg., t in min
+ 1
+ Enter output file for ray table (or none)
+ none
+ Enter del1,del2,del3 (min, max, spacing)
+ 0 150 1
+ Enter output file name for travel times
+ out.tt
+ Enter output file name for source ray angles
+ out.ang
+ Enter output file name for ray parameters
+ out.ray
+ Enter output file name for vertical slowness at source
+ out.eta
+------------------------------------------------------------------------------------- 
+
+Comments:
+
+The maximum depth input can be used if a reflected phase, such as PmP or PcP,
+is desired.
+
+Source depths can either be specified exactly or as a range of equally spaced
+depths.  IMPORTANT:  ALL OF THESE DEPTHS MUST CORRESPOND TO A LINE IN THE INPUT
+VELOCITY MODEL (use the vzfillin program to add lines to your input velocity
+model)
+
+The minimum ray parameter is always set to zero so that vertically travelling rays 
+from events at depth are included.  The maximum value is set to the reciprocal of
+the surface velocity in the model.  Unless speed is important, a large number of rays 
+should be used.  The program maximum is 40000 rays.
+
+If desired, the ray table output file gives the surface-to-surface x and t results 
+for all values of the ray  parameter.  This may be useful in some case for debugging 
+and other purposes.
+
+The output ray angles at the source are from vertical, 0 is upgoing vertical, 90 is 
+horizontal, 135 is downgoing at a 45 degree angle, etc.
+
+The output values of ray parameter are negative for upgoing rays from the source
+and positive for downgoing rays from the source.
+
+The program sets zero values of Vs in the input velocity model to Vp.  This kluge
+means that a specified core S phase will automatically generate SKS.
+
+The program only outputs the first-arriving branches of triplicated phases.  Because
+Pn and Sn are so weak in most local earthquake data sets, these phases can be
+supressed by giving a suitable value for the minimum p at long range (as in the
+above example).  This results in tables that include Pg out to ranges beyond the
+Pg/Pn cross-over distance.
+
+The results are only approximate for layer cake (constant velocity layer) models 
+because the results are interpolated between adjacent values of ray parameter p.
+However, when a large number of rays are used, the inaccuracies are relatively
+small. 
+
+
+
+
+------------------------------------ PHASE_TO_BED3 --------------------------------
+We recommend converting phase data file from the network into our BED3 file which is 
+a binary file. It is much faster to read phase data in BED3 format than the direct 
+phase format, especially for large data sets.
+
+We provide phase_to.bed3.f which is a f77 program that can convert SCSN catalog phase data
+and NCSN HYPOINVERSE phase data into BED3 format.
+
+Examples:
+
+(1) SCSN STP phase data to bed3 file
+
+>> phase_to_bed3
+ Enter output file name for bed3 file
+SDC.bed3
+ Enter input file name with phase data (or none)
+phaselist.stp
+ Enter phase data format 
+ (1) SCSN STP
+ (2) HYPOINVERSE
+1                             ! SCSN STP phase data format
+ Enter file name with phase data (or none)
+none
+
+ nq,npickall =  304 2172      ! number of quakes and picks
+ 
+ 
+(2) NCSN HYPO71 phase data to bed3 file
+
+>> phase2bed3
+ Enter output file name for bed3 file
+SIMEON.bed3
+ Enter file name with phase data (or none)
+phaselist.simeon
+ Enter phase data format 
+ (1) SCSN
+ (2) HYPOINVERSE
+2                            ! NCSN HYPOINVERSE phase data format
+ Enter file name with phase data (or none)
+none
+
+ nq,npickall =  1621 46772   ! number of quakes and picks
+ 
+ 
+Phase data files phaselist.scsn and phaselist.ncsn are in this directory.
+
+NOTE: Be aware of that there should be only one line following the last pick 
+in the phaselist.stp file.
+
+
+
+
+ ------------------------------------ COMPLOC --------------------------------
+ 
+comploc is the f77 program that implements the source-specific location method.
+Before running comploc, you must already have the P and S travel time table files,
+the station location file, and the phase pick file.  Note that you must have
+starting locations for the events in the phase pick file; comploc is not
+designed to locate events without any prior location estimates.
+
+Because of the number of required inputs, we recommend always running comploc
+using a UNIX script (command file).  In the examples, these are the "do" files.
+
+Here is an example of running the program, followed by a more detailed explanation
+of the various inputs:
+
+comploc
+ Enter P-TT file name
+ tt.socal.pg
+ Enter S-TT file name
+ tt.socal.sg
+ Phase file format 
+  (1) BED3 (recommended)
+  (2) SCSN (STP)
+  (3) HYPOINVERSE
+ 1
+ Enter phase file name
+ Valle.bed3
+ Enter stlist file name for station locations
+ stlist.scsn
+ Output Location format:
+ (1) SCSN format
+ (2) HYPOINVERSE (Y2K)
+ (3) NCEDC readable
+ (4) HYPO71 format
+ (5) Our Format
+ 5
+ Enter output file name for locations
+ outbox.L1.loc
+ Enter delmax (km)          !distance cutoff delmax (km)
+ 100
+ Enter npick_min            !min number of pick of each event to be relocated
+ 5
+ Enter flat1,flat2,flon1,flon2 window for quakes  !min and max latitude, longitude window for quakes
+ -999 999 -999 999
+ Enter:  (0) normal  or  (1) fixed loc kluge
+ 0
+ Enter:  (0) catalog depth  or  (1) qdepref  !initial location depth
+ 1
+ Enter the reference starting depth
+ 10.0
+ Enter max event number to read (999999 for all)
+ 999999
+ Enter random frac of events to get (2 for all)  !random frac of events to get (2 for all)
+ 2
+ Enter number of iterations for static station terms
+ 5
+ Enter number of iterations for ssst
+ 10
+ Enter starting nmed, dismax for SSST   !starting number of nearby events and distance cutoff for station terms calculation
+ 1000 20
+ Enter ending nmed, dismax for SSST   !ending number of nearby events and distance cutoff for station terms calculation
+ 20 5
+ Enter NORM id (1) L1, (2) L2 or (3) ROBUST MEAN
+ 1
+ Enter number of iterations     !number of iterations that location box shrinks for each event 
+     and fraction for Grid-search     !fraction that location box shrinks relative to the previous box 
+ 15 0.67
+
+
+First, the program asks for the required input file names.  The phase data are permitted in one
+of three different formats, including the binary bed3 format.  Five different output formats for
+the locations are permitted, including our own special format (option 5).
+
+The distance cutoff permits rejection of phase data from stations beyond a maximum
+distance (km) from the event.  Often data at longer distances are less reliable due 
+to Pg/Pn ambiguities or defects in the velocity model.  We have generally used a 100 km
+cutoff for our California location work.  Comparing results using different distance cutoffs
+is a good test of the velocity model.  If the event depths change significantly when a 
+50 km cutoff is used compared to a 100 km cutoff, then the mid to lower crustal velocities
+in the model are likely too fast or too slow.  A clue that this may be happening is when a
+mainshock locates at a  different depth from its aftershocks; larger events typically have
+phase picks extending to larger distances than smaller events.
+
+npick_min sets a mininum number of phase picks in order to locate an event.  Obviously at
+least four picks are required to solve for (x,y,z,t).  We recommend setting this to at
+least five.  Larger numbers will restrict the locations to only the better recorded events.
+
+A lat/lon window options permits locating a geographic subset of your dataset.  Units are
+decimal degrees.  Use negative numbers for west longitudes, i.e. California is at -120 longitude.
+
+Normally, the fixed loc kluge option should not be used as it does not produce new locations.
+The fixed location kluge option permits keeping the location fixed at the (x,y,z) location given
+in the phase file.  The program will then only vary the origin time of the events to achieve
+the best fit.  This option can be useful to compute station terms for a given set of locations
+with respect to a particular 1-D velocity model.  For example, if one has locations available
+from a joint-hypocenter velocity (JHV) inversion that are believed to be accurate, this option can 
+be used to compute a set of station terms that will yield similar absolute locations using the
+comploc program (this will require a separate run of comploc using the station terms as input).  
+The advantage is that additional events (not in the JHV catalog) can be located and the SSST
+method should improve the relative location accuracy of all of the events.
+
+The starting reference depth is the center point for the grid search method.  If a fixed depth
+is used (as in this example), then another input line is required to specify the depth.
+Except for rare, pathological events that confuse the grid search approach, the location results 
+should not be sensitive to this depth.  10 km is a good starting depth because the grid
+search method starts with a box of +- 10 km.
+
+For testing purposes, one can locate fewer than the total number of events by specifying a
+maximum number of events to locate.  One can also specify a random fraction of the total
+events to locate.  For example, entering 0.1 for the random fraction would cause the program
+to randomly select 10% of the input events.
+
+The program works by performing a number of iterations of event location and station term
+calculation.  There are two types of stations terms.  Static station terms are a single number
+for each station and phase (P or S).  They are computed as the mean (or median) of the residuals
+for each station.  The source-specific station terms (SSST) are specific to each event and are 
+computed by smoothing the residuals over adjacent events.  The best results are generally obtained
+by first solving for static stations terms and then solving for source-specific station terms
+using a residual smoothing box that decreases in size with each iteration.  The program permits
+the user to vary the number of iterations used at each step and the size of the smoothing box
+for the SSST calculation.
+
+In this example, 5 iterations are used to compute the static station terms and 10 are used for
+the SSST.  At each SSST iteration the terms are computed by smoothing over nmed adjacent events,
+located within a distance dismax of each target event.  In this example, nmed = 1000 and dismax
+= 20 (km) at the first iteration.  At the last (10th iteration), nmed = 20 and dismax = 5 (km).
+nmed and dismax are set to intermediate values for iterations 2 to 9 (these are evenly spaced
+in log(nmed) and log(dismax)).  The parameters used here work pretty well for our California
+locations but users may wish to experiment with different choices.  The general strategy is
+to gradually decrease the number of events used in smoothing the residuals for the SSST calculation.
+The longer wavelength structure in the residual field helps to improve the absolute location
+accuracy; the shorter wavelength structure provides the best relative location accuracy among
+nearby events.  Even if the primary control on the SSST smoothing is provided by nmed, suitable
+choices for dismax can make the program run faster.  This is because sorting by distance is
+required to identify the closest nmed events.  Sorting is a computer intensive process for
+large data sets (> 100,000 events) so using dismax to restrict the number of events to be sorted
+is a good idea.
+
+The grid search location method searches for the smallest residuals as defined by the (1) the
+L1-norm (median), (2) L2-norm (least squares, mean), or (3) robust mean (L2 with outlier suppression).
+We generally recommend the use of (1) or (3) because they are relatively insensitive to gross picking
+and timing errors, unless you are confident that your picks are outlier free.  For consistency, 
+this choice of norm also controls how the station terms are computed (1=median residual,
+2= mean residual, 3=robust mean residual).   Note: the robust mean estimates the mean uses L2 
+for residuals less than 0.1 s and L1 for residuals greater than 0.1 s.
+
+The grid search location method is iterative.  At each iteration, it checks 27 locations in a 3x3x3
+cube centered on the current best location.  The location with the smallest residual becomes the new
+current location and the cube shrinks by a user specified fraction (0.67 in this example).  The starting
+cube is 20 km across (+- 10 km from the starting location).  The nominal location precision is
+determined by the number of iterations and the fractional reduction parameter.  In this case, this
+precision is 10*0.67^15 = 0.0246 km = 25 m.  Faster results can be obtained by using 0.5 rather than
+0.67 and a smaller number of iterations; however the grid search performs somewhat less reliably
+in this case for "problem" events (if the misfit function is very elongated, the minimum may fall
+between grid points and the program may not converge to the true minimum residual solution).  
+
+
+Note:
+
+(1) Travel time tables, ray parameter tables and vertical slowness tables
+are generated using deptable.f program.
+
+(2) We give users choices of output location file format.
+
+   (2a)  SCSN catalog format 
+
+========================================================================
+
+col len format  name     comment
+--- --- ------  ----     -------
+ 1   4    a4    cyr       YYYY
+ 6   2    a2    cmon      MM
+ 9   2    a2    cdy       DD
+13   2    a2    chr       HH    (UTC time:
+16   2    a2    cmn       mm     7 hours ahead of Pacific Daylight Time
+19   5   f5.2   fsc       SS.ss  8 hours ahead of Pacific Standard Time)
+25   3    i3    lat       degrees
+29   5   f5.2   lat       minutes
+34   4    i4    lon       degrees
+39   5   f5.2   lon       minutes
+45   1    a1    quality   location quality
+                                  'A' +- 1 km horizontal distance
+                                      +- 2 km depth
+                                  'B' +- 2 km horizontal distance
+                                      +- 5 km depth
+                                  'C' +- 5 km horizontal distance
+                                      no depth restriction
+                                  'D' >+- 5 km horizontal distance
+                                  'Z' no quality listed in database
+47   3   f3.1  magnitude
+54   6   f6.2  depth      kilometers
+60   3    i3   nph        number of picked phases
+67   5   f5.2  rms        root mean square of travel times
+73   8    i8   eventid    event ID
+========================================================================
+
+   
+   (2b) HYPOINVERSE (Y2K)
+   
+  
+========================================================================
+
+col len format  name     comment
+--- --- ------  ----     -------
+1    4    I4    iyr       Year.
+5    2    I2    imon      Month.
+7    2    I2    idy       Day.
+9    2    I2    ihr       Hour.
+11   2    I2    imn       Minute.
+13   4    F4.2  fsc       Origin time seconds.
+17   2    F2.0  ilat      Latitude (deg).
+19   1    A1              S for south, blank otherwise.
+20   4    F4.2  elat      Latitude (min).
+24   3    F3.0  ilon      Longitude (deg).
+27   1    A1              E for east, blank otherwise.
+28   4    F4.2            Longitude (min).
+32   5    F5.2  qdep      Depth (km).
+37   3    F3.2            Magnitude from maximum S amplitude from NCSN stations
+40   3    I3              Number of P & S times with final weights greater than 0.1. 
+43   3    I3              Maximum azimuthal gap, degrees.
+46   3    F3.0            Distance to nearest station (km).
+49   4    F4.2  rms       RMS travel time residual.
+53   3    F3.0            Azimuth of largest principal error (deg E of N).
+56   2    F2.0            Dip of largest principal error (deg).
+58   4    F4.2            Size of largest principal error (km).
+62   3    F3.0            Azimuth of intermediate principal error.
+65   2    F2.0            Dip of intermediate principal error.
+67   4    F4.2            Size of intermediate principal error (km).
+71   3    F3.2            Coda duration magnitude from NCSN stations.
+74   3    A3              Event location remark. (See table 7 below).
+77   4    F4.2            Size of smallest principal error (km).
+81   2    2A1             Auxiliary remarks (See note below).
+83   3    I3              Number of S times with weights greater than 0.1.
+86   4    F4.2            Horizontal error (km).
+90   4    F4.2            Vertical error (km).
+94   3    I3              Number of P first motions.
+97   4    F4.1            Total of NCSN S-amplitude mag weights ~number of readings.
+101  4    F4.1            Total of NCSN duration mag weights ~number of readings.
+105  3    F3.2            Median-absolute-difference of NCSN S-amp magnitudes.
+108  3    F3.2            Median-absolute-difference of NCSN duration magnitudes.
+111  3    A3              3-letter code of crust and delay model. (See table 8 below).
+114  1    A1              Last authority for earthquake N=NCSC (USGS), B=UC Berkeley.
+115  1    A1              Most common P & S data source code. (See table 1 below).
+116  1    A1              Most common duration data source code. (See cols. 68-69)
+117  1    A1              Most common amplitude data source code.
+118  1    A1              Coda duration magnitude type code
+119  3    I3              Number of valid P & S readings (assigned weight > 0).
+122  1    A1              S-amplitude magnitude type code
+123  1    A1              "External" magnitude label or type code.
+124  3    F3.2            "External" magnitude.
+127  3    F3.1            Total of the "external" magnitude weights (~ number of readings).
+130  1    A1              Alternate amplitude magnitude label or type code (i.e. L for ML calculated by Hypoinverse from Wood Anderson amplitudes).
+131  3    F3.2            Alternate amplitude magnitude.
+134  3    F3.1            Total of the alternate amplitude mag weights ~no. of readings.
+137  10   I10             Event identification number
+147  1    A1              Preferred magnitude label code chosen from those available.
+148  3    F3.2            Preferred magnitude, chosen by the Hypoinverse PRE command.
+151  4    F4.1            Total of the preferred mag weights (~ number of readings). 
+155  1    A1              Alternate coda duration magnitude label or type code (i.e. Z).
+156  3    F3.2            Alternate coda duration magnitude.
+159  4    F4.1            Total of the alternate coda duration magnitude weights. 
+163  1    A1              Version number of information: 0=25 pick; 1=Final EW with MD; 2=ML added, etc. 0-9, then A-Z. Hypoinv. passes this through.
+164  1    A1              Version # of last human review. blank=unreviewed, 1-9, A-Z.
+
+========================================================================
+ 
+ 
+ 
+ (2c) NCEDC readable
+ 
+ 
+========================================================================
+col len format   name     comment
+--- --- ------   ----     -------
+1    4    i4     iyr       Year.
+6    2    i2     imon      Month.
+9    2    i2     idy       Day.
+12   2    i2     ihr       Hour.
+15   2    i2     imn       Minute.
+18   5    f5.2   fsc       second.
+23   9    f9.4   qlat      Latitude.
+32   10   f10.4  qlon      Longitude.
+42   7    f7.2   qdep      Depth (km).
+49   6    f6.2   qmag      Magnitude.
+58   2    a2     magt      magnitude type.
+60   5    i5     nst       Number of stations used to compute the location.
+65   4    i4     gap       Maximum Azimuthal gap 
+                           (unavailable from our location program). 
+69   5    i5     clo       Distance of closest station to event 
+                           (unavailable from our location program).
+74   5    f5.2   rms       RMS travel time residual.
+80   4    a4     src       Source of event info
+                           The reporting source for the solution. Our solution's
+                           source is SHLK.
+85   10   i10    id        Event ID
+
+
+   (2d) HYP71
+
+========================================================================
+col len format   name     comment
+--- --- ------   ----     -------
+1    4    i4      iyr      Year.
+5    2    i2      imon     Month.
+7    2    i2      idy      Day.
+10   2    i2      ihr      Hour.
+12   2    i2      imn      Minute.
+14   6    f6.2    fsc      Original time seconds.
+20   3    f3.0    ilat     Latitude in minutes.
+24   5    f5.2    qlat     Latitude.
+29   4    f4.0    ilon     Longitude in minutes.
+34   5    f5.2    qlon     Longitude.
+38   7    f7.2    qdep     Depth. 
+47   5    f5.2    qmag     Magnitude.
+52   3    i3      npspick  Number of picks (P+S).
+55   4    f4.0    maxazi   maximum azimuth.
+59   5    f5.1    mindis   minimum source-receiver distance.
+64   5    f5.2    rms      RMS residual for each earthquake.
+69   5    f5.1    errx     Horizontal error.
+74   5    f5.1    errz     Vertical error. 
+83   10   i10     idcusp   Cuspid
+ 
+
+   (2e) Our own format
+ 
+========================================================================
+col len format   name     comment
+--- --- ------   ----     -------
+1    4    i4      iyr      Year.
+5    3    i3      imon     Month.
+8    3    i3      idy      Day.
+11   3    i3      ihr      Hour.
+14   3    i3      imn      Minute.
+17   7    f7.3    fsc      Original time seconds.
+24   8    f8.4    qlat     Latitude.
+32   10   f10.4   qlon     Longitude.
+42   6    f6.2    qdep     Depth.
+48   6    f6.2    errx     Location error in x.
+54   6    f6.2    erry     Location error in y.
+60   6    f6.2    errz     Location error in z.
+66   6    f6.2    errt     Original time error.
+72   11   i11     cuspid   Event ID.
+83   4    f4.1    qmag     Magnitude.
+87   4    i4      nppick   number of P-phases used to compute the location.
+91   4    i4      nspick   number of S-phases used to compute the location.
+95   6    f6.2    rms      RMS travel time residual.
+
+========================================================================
+

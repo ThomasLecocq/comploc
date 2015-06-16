@@ -1,0 +1,7 @@
+ANZA region
+
+# number of events = 777 (between 06/12/2005 and 06/20/2005)
+# number of picks = 20000
+
+xlim -116.75 -116.3
+ylim 33.35 33.67 

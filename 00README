@@ -1,0 +1,26 @@
+                      COMPLOC_1.0 EARTHQUAKE LOCATION PACKAGE 
+
+COMPLOC_1.0 is a Fortran77 computer program package for relocating earthquakes. 
+The reloc.man file in this directory describes the programs included in this 
+package. The program has been tested on both MAC and SUN systems, but is made 
+available without warranty.  Users of the program are free to make modifications
+to the programs to meet their particular needs. Tell us about your improvements
+and bug fixes, and we will add them to the code for everyone's benefit.
+
+The complete program package is available at: http://igpphome.ucsd.edu/~glin/  
+
+
+REFERENCES
+
+Shearer, P., E. Hauksson, and G. Lin (2005), Southern California Hypocenter 
+Relocation with Waveform Cross-Correlation, Part 2: Results Using Source-Specific
+Station Terms and Cluster Analysis, Bull. Seism. Soc. Am., 95, 904-915. 
+
+Lin, G. and P. Shearer,  Tests of relative earthquake location techniques using 
+synthetic data , J. Geophys. Res., 110, B04304, doi: 10.1029/2004JB003380, 2005.
+
+
+BUG REPORTS, QUESTIONS, ENHANCEMENTS, ETC.
+
+Please send questions, bug reports, news about how you have improved the programs, 
+etc. to gulin@ucsd.edu , with a copy to pshearer@ucsd.edu.

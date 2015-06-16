@@ -1,0 +1,11 @@
+Vallecito region
+
+# number of events = 2330 (between 01/01/1984 and 06/22/2005)
+# number of picks = 28055
+
+xlim -116.46 -116.34
+
+
+ylim 32.94 33.09 
+
+
