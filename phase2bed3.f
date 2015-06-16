@@ -7,6 +7,8 @@
 !
 ! 02/20/06 add the new SCSN STP phase data format           Guoqing Lin
 !
+! 04/19/07 Output reading errors                            Guoqing Lin
+!
 !-----------------------------------------------------------------------
 !
       program phase2bed3
@@ -227,7 +229,7 @@
 
          iquake=1
          if (npha.eq.1.or.npha.eq.2) then     !SCSN STP
-         read (linebuf,131) qid,evtype,qyr,qmon,qdy,qhr,qmn,qsc,
+         read (linebuf,131,err=199) qid,evtype,qyr,qmon,qdy,qhr,qmn,qsc,
      &                      qlat,qlon,qdep,qmag
 !         print 131, qid,evtype,qyr,qmon,qdy,qhr,qmn,qsc,
 !     &              qlat,qlon,qdep,qmag
@@ -244,8 +246,8 @@
          magtype=' '
 
          else if (npha.eq.3) then !HYPOINVERSE
-         read (linebuf,132) qyr,qmon,qdy,qhr,qmn,isec,i1,chr1,i2,
-     &            i3,chr2,i4,i5,idcusp,i6
+         read (linebuf,132,err=199) qyr,qmon,qdy,qhr,qmn,isec,i1,chr1,
+     &            i2,i3,chr2,i4,i5,idcusp,i6
 !     &            i3,chr2,i4,i5,i6,ierr1,ierr2,idcusp
 !         print 132, qyr,qmon,qdy,qhr,qmn,isec,i1,chr1,i2,
 !     &              i3,chr2,i4,i5,i6,ierr1,ierr2,idcusp
@@ -284,18 +286,21 @@
       if(npha.ne.3) then  !SCSN STP
 
          if (npha.eq.1) then !OLD
-            read (linebuf,171) stnet,sname,stcomp,
+            read (linebuf,171,err=199) stnet,sname,stcomp,
      &       phinfo_bad,phweight,delkm,pick
 !            print 171, stnet,sname,stcomp,
 !     &       phinfo_bad,phweight,delkm,pick
 171      format (1x,a2,1x,a4,1x,a3,30x,a8,f3.1,f9.2,f9.3)   !tab is first char
 
-         else if (npha.eq.2.and.linebuf(44:44) .eq. ' ') then  !NEW
-            read (linebuf,172) stnet,sname,stcomp,
+!         else if (npha.eq.2.and.linebuf(44:44) .eq. ' ') then  !NEW
+         else if (npha.eq.2) then  !NEW
+            read (linebuf,172,err=199) stnet,sname,stcomp,
      &       phinfo_bad,phweight,delkm,pick
 !            print 172, stnet,sname,stcomp,
 !     &       phinfo_bad,phweight,delkm,pick
-172      format (1x,a2,3x,a4,1x,a3,30x,a8,f3.1,f9.2,f9.3)   !tab is first char
+!172      format (1x,a2,3x,a4,1x,a3,30x,a8,f3.1,f9.2,f9.3)   !tab is first char
+172      format (1x,a2,3x,a4,1x,a3,33x,a8,f3.1,f9.2,f9.3)   !tab is first char
+!                                                           04/19/07 Guoqing Lin
          endif
 
          j=j+1
@@ -310,7 +315,9 @@
          else
             stname2(4:6)=sname(2:4)
          end if
-         stname2(9:11)=stcomp
+!         stname2(9:11)=stcomp
+         stname2(9:9)=' '       
+         stname2(10:12)=stcomp       ! 04/19/07 Guoqing Lin
 
          comp=stcomp
          phase(1:1)=phinfo_bad(1:1)     !e.g., P or S
@@ -336,8 +343,8 @@
          j=j+1
          npick=npick+1
          
-         read (linebuf,173) stname,phinfo(1:4),iyr,imon,idy,ihr,imn,
-     &            isec,idelkm
+         read (linebuf,173,err=199) stname,phinfo(1:4),iyr,imon,idy,ihr,
+     &            imn,isec,idelkm
 !         print 173, stname,phinfo(1:4),iyr,imon,idy,ihr,imn,
 !     &            isec,idelkm
 173      format (a12,1x,a4,i4,4i2,i5,40x,i4)
@@ -408,7 +415,11 @@
       iflag=0
       go to 110
 900   print *,'nq,npickall = ',nq,npickall
-      close(12)
+      go to 399
+199   print *,'Something wrong with this line !'
+      print *,linebuf(1:50)
+
+399   close(12)
 
       stop
       end

@@ -5,13 +5,16 @@
 !
 !   Only keep the first one if a station listed more than once.
 !
+!   SCSN station list format changed corresponding to the format change
+!   in the SCEDC station list format from web
+!                                                 04/18/2007 Guoqing Lin
 !-----------------------------------------------------------------------
 !
       program getstlist       
       implicit none
     
       integer maxnst
-      parameter (maxnst=10000)
+      parameter (maxnst=30000)
 
       integer iformat
       integer is
@@ -60,7 +63,7 @@
       implicit none
 
       integer maxnst
-      parameter (maxnst=10000)
+      parameter (maxnst=30000)
       integer nsta
       integer i
       integer is
@@ -85,7 +88,8 @@
       ns=0
       do 10 i=1,maxnst
          read (19,11,end=12) stname,compn,flat,flon,felev,netname
-11       format (a4,1x,a3,32x,f10.5,f11.5,f6.0,23x,a2)
+!11       format (a4,1x,a3,32x,f10.5,f11.5,f6.0,23x,a2)   !old format
+11       format (a4,2x,a3,32x,f10.5,f11.5,f6.0,23x,a2)
 
          if (ns .gt. 0) then
          do is=1,ns
@@ -113,7 +117,7 @@
       implicit none
 
       integer maxnst
-      parameter (maxnst=10000)
+      parameter (maxnst=30000)
       integer nsta
       integer i
       integer is 
