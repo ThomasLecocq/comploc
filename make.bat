@@ -41,11 +41,3 @@ if "%1" == "clean" (
     erase listbed3.exe
     erase comploc.exe
 )
-
-
-
-
-
-
-
-
