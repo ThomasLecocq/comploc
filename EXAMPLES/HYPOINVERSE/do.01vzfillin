@@ -1,4 +1,4 @@
-../../vzfillin << !
+../../vzfillin.exe << !
 vz.coal
 vz.coal.f
 1.732         !Vp/Vs ratio if Vs=0 in input
